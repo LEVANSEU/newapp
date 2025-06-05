@@ -60,34 +60,20 @@ if report_file and statement_file:
 
         company_summaries.append((company_name, company_id, company_invoice_sum))
 
-    ws2 = wb.create_sheet(title="დეტალური მონაცემები")
-    ws2.append(purchases_df.columns.tolist())
-    for row in purchases_df.itertuples(index=False):
-        ws2.append(row)
+    # სხვა შიტები
+    for sheet_title, content_df in [
+        ("დეტალური მონაცემები", purchases_df),
+        ("საბანკოამონაწერი", bank_df),
+        ("ანგარიშფაქტურის დეტალები", purchases_df[['სერია №', 'საქონელი / მომსახურება', 'ზომის ერთეული', 'რაოდ.', 'ღირებულება დღგ და აქციზის ჩათვლით']].rename(columns={'სერია №': 'ინვოისის №'})),
+        ("გადარიცხვები_უბმოლოდ", bank_df[~bank_df['P'].isin(purchases_df['საიდენტიფიკაციო კოდი'])]),
+        ("განახლებული ამონაწერი", bank_df),
+    ]:
+        ws = wb.create_sheet(title=sheet_title)
+        ws.append(content_df.columns.tolist())
+        for row in content_df.itertuples(index=False):
+            ws.append(row)
 
-    ws3 = wb.create_sheet(title="საბანკოამონაწერი")
-    ws3.append(bank_df.columns.tolist())
-    for row in bank_df.itertuples(index=False):
-        ws3.append(row)
-
-    ws4 = wb.create_sheet(title="ანგარიშფაქტურის დეტალები")
-    invoice_details_df = purchases_df[['სერია №', 'საქონელი / მომსახურება', 'ზომის ერთეული', 'რაოდ.', 'ღირებულება დღგ და აქციზის ჩათვლით']].copy()
-    invoice_details_df.rename(columns={'სერია №': 'ინვოისის №'}, inplace=True)
-    ws4.append(invoice_details_df.columns.tolist())
-    for row in invoice_details_df.itertuples(index=False):
-        ws4.append(row)
-
-    ws5 = wb.create_sheet(title="გადარიცხვები_უბმოლოდ")
-    missing_payments = bank_df[~bank_df['P'].isin(purchases_df['საიდენტიფიკაციო კოდი'])]
-    ws5.append(missing_payments.columns.tolist())
-    for row in missing_payments.itertuples(index=False):
-        ws5.append(row)
-
-    ws6 = wb.create_sheet(title="განახლებული ამონაწერი")
-    ws6.append(bank_df.columns.tolist())
-    for row in bank_df.itertuples(index=False):
-        ws6.append(row)
-
+    # კომპანიის ჯამების ფურცელი
     ws7 = wb.create_sheet(title="კომპანიების_ჯამები")
     ws7.append(['დასახელება', 'საიდენტიფიკაციო კოდი', 'ანგარიშფაქტურების ჯამი', 'ჩარიცხული თანხა'])
     for idx, (company_name, company_id, invoice_sum) in enumerate(company_summaries, start=2):
@@ -98,37 +84,23 @@ if report_file and statement_file:
     wb.save(output)
     output.seek(0)
 
-    # 📋 ღილაკებით ჩამონათვალი
-    st.subheader("📋 კომპანიების ჩამონათვალი")
+    # 📋 კომპანიების ღილაკებად ჩამონათვალი
+    if 'selected_company' not in st.session_state:
+        st.subheader("📋 კომპანიების ჩამონათვალი")
 
-    for name, company_id, invoice_sum in company_summaries:
-        col1, col2, col3, col4, col5 = st.columns([2, 2, 1.5, 1.5, 1.5])
-        with col1:
-            if st.button(f"{name}", key=f"name_{company_id}"):
-                st.session_state['selected_company'] = name
-        with col2:
-            if st.button(f"{company_id}", key=f"id_{company_id}"):
-                st.session_state['selected_company'] = company_id
+        for name, company_id, invoice_sum in company_summaries:
+            col1, col2, col3, col4, col5 = st.columns([2, 2, 1.5, 1.5, 1.5])
+            with col1:
+                if st.button(f"{name}", key=f"name_{company_id}"):
+                    st.session_state['selected_company'] = name
+            with col2:
+                if st.button(f"{company_id}", key=f"id_{company_id}"):
+                    st.session_state['selected_company'] = name
 
-        paid_sum = bank_df[bank_df["P"] == str(company_id)]["Amount"].sum()
-        difference = invoice_sum - paid_sum
+            paid_sum = bank_df[bank_df["P"] == str(company_id)]["Amount"].sum()
+            difference = invoice_sum - paid_sum
 
-        with col3:
-            st.write(f"{invoice_sum:,.2f}")
-        with col4:
-            st.write(f"{paid_sum:,.2f}")
-        with col5:
-            st.write(f"{difference:,.2f}")
-
-    if 'selected_company' in st.session_state:
-        st.info(f"🔎 არჩეული კომპანია: **{st.session_state['selected_company']}**")
-
-
-    # 📁 ფაილის ჩამოტვირთვა
-    st.success("✅ ფაილი მზადაა! ჩამოტვირთე აქედან:")
-    st.download_button(
-        label="⬇️ ჩამოტვირთე Excel ფაილი",
-        data=output,
-        file_name="საბოლოო_ფაილი.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+            with col3:
+                st.write(f"{invoice_sum:,.2f}")
+            with col4:
+                st.write(f"{paid
