@@ -103,4 +103,34 @@ if report_file and statement_file:
             with col3:
                 st.write(f"{invoice_sum:,.2f}")
             with col4:
-                st.write(f"{paid
+                st.write(f"{paid_sum:,.2f}")
+            with col5:
+                st.write(f"{difference:,.2f}")
+
+    # 📄 არჩეული კომპანიის დეტალების ჩვენება
+    if 'selected_company' in st.session_state:
+        selected_name = st.session_state['selected_company']
+        st.subheader(f"🔎 {selected_name} - ანგარიშფაქტურები")
+
+        # ხელახლა წაკითხვა report.xlsx-დან კომპანიის მიხედვით
+        report_file.seek(0)
+        df_full = pd.read_excel(report_file, sheet_name='Grid')
+        df_full['დასახელება'] = df_full['გამყიდველი'].astype(str).apply(lambda x: re.sub(r'^\(\d+\)\s*', '', x).strip())
+        matching_df = df_full[df_full['დასახელება'].str.contains(selected_name, na=False)]
+
+        if not matching_df.empty:
+            st.dataframe(matching_df, use_container_width=True)
+        else:
+            st.warning("📭 ჩანაწერი ვერ მოიძებნა ამ კომპანიისთვის.")
+
+        if st.button("⬅️ დაბრუნება სრულ სიაზე"):
+            del st.session_state['selected_company']
+
+    # 📥 ჩამოტვირთვა
+    st.success("✅ ფაილი მზადაა! ჩამოტვირთე აქედან:")
+    st.download_button(
+        label="⬇️ ჩამოტვირთე Excel ფაილი",
+        data=output,
+        file_name="საბოლოო_ფაილი.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
