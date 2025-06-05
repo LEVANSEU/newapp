@@ -7,7 +7,7 @@ import re
 st.set_page_config(layout="wide")
 st.title("Excel გენერატორი")
 
-# გაფართოებული ვიზუალი Streamlit-ზე
+# გაფართოების CSS ჰაკი
 st.markdown("""
     <style>
         .main {
@@ -29,7 +29,6 @@ st.markdown("""
 report_file = st.file_uploader("ატვირთე ანგარიშფაქტურების ფაილი (report.xlsx)", type=["xlsx"])
 statement_file = st.file_uploader("ატვირთე საბანკო ამონაწერის ფაილი (statement.xlsx)", type=["xlsx"])
 
-# გაგრძელება თუ ორივე ფაილი ატვირთულია
 if report_file and statement_file:
     purchases_df = pd.read_excel(report_file, sheet_name='Grid')
     bank_df = pd.read_excel(statement_file)
@@ -61,7 +60,6 @@ if report_file and statement_file:
 
         company_summaries.append((company_name, company_id, company_invoice_sum))
 
-    # დამატებითი ფურცლები
     for sheet_title, content_df in [
         ("დეტალური მონაცემები", purchases_df),
         ("საბანკოამონაწერი", bank_df),
@@ -74,7 +72,6 @@ if report_file and statement_file:
         for row in content_df.itertuples(index=False):
             ws.append(row)
 
-    # კომპანიის ჯამების ფურცელი
     ws7 = wb.create_sheet(title="კომპანიების_ჯამები")
     ws7.append(['დასახელება', 'საიდენტიფიკაციო კოდი', 'ანგარიშფაქტურების ჯამი', 'ჩარიცხული თანხა'])
     for idx, (company_name, company_id, invoice_sum) in enumerate(company_summaries, start=2):
@@ -85,7 +82,6 @@ if report_file and statement_file:
     wb.save(output)
     output.seek(0)
 
-    # მთავარი ხედის ან დეტალების ჩვენება
     if 'selected_company' not in st.session_state:
         st.subheader("📋 კომპანიების ჩამონათვალი")
 
@@ -120,7 +116,20 @@ if report_file and statement_file:
         if not matching_df.empty:
             st.dataframe(matching_df, use_container_width=True)
 
-            # Excel ჩამოტვირთვის ღილაკი მხოლოდ ამ კომპანიისთვის
+            # 🔍 გუგლის საძიებო ველი
+            st.subheader("🔍 მოძებნე გუგლში მასალა ან მომსახურება")
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                search_term = st.text_input("ჩაწერე სახელი ან სიტყვა:")
+            with col2:
+                if st.button("ძებნა"):
+                    if search_term.strip():
+                        search_url = f"https://www.google.com/search?q={search_term.replace(' ', '+')}"
+                        st.markdown(f"[🌐 გადადი გუგლზე]({search_url})", unsafe_allow_html=True)
+                    else:
+                        st.warning("გთხოვ ჩაწერე ტექსტი ძებნამდე.")
+
+            # 📥 ამ კომპანიის ინდივიდუალური Excel ფაილი
             company_output = io.BytesIO()
             company_wb = Workbook()
             ws = company_wb.active
@@ -143,7 +152,6 @@ if report_file and statement_file:
         if st.button("⬅️ დაბრუნება სრულ სიაზე"):
             del st.session_state['selected_company']
 
-    # საბოლოო ფაილის ჩამოტვირთვა
     st.success("✅ ფაილი მზადაა! ჩამოტვირთე აქედან:")
     st.download_button(
         label="⬇️ ჩამოტვირთე Excel ფაილი",
