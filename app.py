@@ -5,10 +5,9 @@ from openpyxl import Workbook
 import re
 
 st.set_page_config(layout="wide")
-
 st.title("Excel გენერატორი")
 
-# გაფართოების CSS ჰაკი
+# გაფართოებული ვიზუალი Streamlit-ზე
 st.markdown("""
     <style>
         .main {
@@ -26,9 +25,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# ფაილების ატვირთვა
 report_file = st.file_uploader("ატვირთე ანგარიშფაქტურების ფაილი (report.xlsx)", type=["xlsx"])
 statement_file = st.file_uploader("ატვირთე საბანკო ამონაწერის ფაილი (statement.xlsx)", type=["xlsx"])
 
+# გაგრძელება თუ ორივე ფაილი ატვირთულია
 if report_file and statement_file:
     purchases_df = pd.read_excel(report_file, sheet_name='Grid')
     bank_df = pd.read_excel(statement_file)
@@ -60,7 +61,7 @@ if report_file and statement_file:
 
         company_summaries.append((company_name, company_id, company_invoice_sum))
 
-    # სხვა შიტები
+    # დამატებითი ფურცლები
     for sheet_title, content_df in [
         ("დეტალური მონაცემები", purchases_df),
         ("საბანკოამონაწერი", bank_df),
@@ -84,7 +85,7 @@ if report_file and statement_file:
     wb.save(output)
     output.seek(0)
 
-    # 📋 კომპანიების ღილაკებად ჩამონათვალი
+    # მთავარი ხედის ან დეტალების ჩვენება
     if 'selected_company' not in st.session_state:
         st.subheader("📋 კომპანიების ჩამონათვალი")
 
@@ -107,12 +108,10 @@ if report_file and statement_file:
             with col5:
                 st.write(f"{difference:,.2f}")
 
-    # 📄 არჩეული კომპანიის დეტალების ჩვენება
-    if 'selected_company' in st.session_state:
+    else:
         selected_name = st.session_state['selected_company']
         st.subheader(f"🔎 {selected_name} - ანგარიშფაქტურები")
 
-        # ხელახლა წაკითხვა report.xlsx-დან კომპანიის მიხედვით
         report_file.seek(0)
         df_full = pd.read_excel(report_file, sheet_name='Grid')
         df_full['დასახელება'] = df_full['გამყიდველი'].astype(str).apply(lambda x: re.sub(r'^\(\d+\)\s*', '', x).strip())
@@ -120,13 +119,31 @@ if report_file and statement_file:
 
         if not matching_df.empty:
             st.dataframe(matching_df, use_container_width=True)
+
+            # Excel ჩამოტვირთვის ღილაკი მხოლოდ ამ კომპანიისთვის
+            company_output = io.BytesIO()
+            company_wb = Workbook()
+            ws = company_wb.active
+            ws.title = selected_name[:31]
+            ws.append(matching_df.columns.tolist())
+            for row in matching_df.itertuples(index=False):
+                ws.append(row)
+            company_wb.save(company_output)
+            company_output.seek(0)
+
+            st.download_button(
+                label=f"⬇️ ჩამოტვირთე {selected_name} ინვოისების Excel",
+                data=company_output,
+                file_name=f"{selected_name}_ინვოისები.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
         else:
             st.warning("📭 ჩანაწერი ვერ მოიძებნა ამ კომპანიისთვის.")
 
         if st.button("⬅️ დაბრუნება სრულ სიაზე"):
             del st.session_state['selected_company']
 
-    # 📥 ჩამოტვირთვა
+    # საბოლოო ფაილის ჩამოტვირთვა
     st.success("✅ ფაილი მზადაა! ჩამოტვირთე აქედან:")
     st.download_button(
         label="⬇️ ჩამოტვირთე Excel ფაილი",
@@ -134,21 +151,3 @@ if report_file and statement_file:
         file_name="საბოლოო_ფაილი.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-     # 📥 მხოლოდ ამ კომპანიის Excel ფაილის ჩამოტვირთვა
-        company_output = io.BytesIO()
-        company_wb = Workbook()
-        ws = company_wb.active
-        ws.title = selected_name[:31]  # Excel sheet name max length = 31
-        ws.append(matching_df.columns.tolist())
-        for row in matching_df.itertuples(index=False):
-            ws.append(row)
-        company_wb.save(company_output)
-        company_output.seek(0)
-
-        st.download_button(
-            label=f"⬇️ ჩამოტვირთე {selected_name} ინვოისების Excel",
-            data=company_output,
-            file_name=f"{selected_name}_ინვოისები.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
