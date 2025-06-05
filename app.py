@@ -123,23 +123,6 @@ if report_file and statement_file:
     if 'selected_company' in st.session_state:
         st.info(f"🔎 არჩეული კომპანია: **{st.session_state['selected_company']}**")
 
-    # 📑 ქვემოთ სრული ცხრილი
-    st.subheader("📑 კომპანიების ცხრილი")
-
-    summary_table = []
-    for name, company_id, invoice_sum in company_summaries:
-        paid_sum = bank_df[bank_df["P"] == str(company_id)]["Amount"].sum()
-        difference = invoice_sum - paid_sum
-        summary_table.append({
-            "დასახელება": name,
-            "საიდენტიფიკაციო კოდი": company_id,
-            "ანგარიშფაქტურების ჯამი": round(invoice_sum, 2),
-            "ჩარიცხული თანხა": round(paid_sum, 2),
-            "სხვაობა": round(difference, 2)
-        })
-
-    summary_df = pd.DataFrame(summary_table)
-    st.dataframe(summary_df, use_container_width=True)
 
     # 📁 ფაილის ჩამოტვირთვა
     st.success("✅ ფაილი მზადაა! ჩამოტვირთე აქედან:")
