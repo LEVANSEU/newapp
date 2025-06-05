@@ -134,3 +134,21 @@ if report_file and statement_file:
         file_name="საბოლოო_ფაილი.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+     # 📥 მხოლოდ ამ კომპანიის Excel ფაილის ჩამოტვირთვა
+        company_output = io.BytesIO()
+        company_wb = Workbook()
+        ws = company_wb.active
+        ws.title = selected_name[:31]  # Excel sheet name max length = 31
+        ws.append(matching_df.columns.tolist())
+        for row in matching_df.itertuples(index=False):
+            ws.append(row)
+        company_wb.save(company_output)
+        company_output.seek(0)
+
+        st.download_button(
+            label=f"⬇️ ჩამოტვირთე {selected_name} ინვოისების Excel",
+            data=company_output,
+            file_name=f"{selected_name}_ინვოისები.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
